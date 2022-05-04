@@ -14,6 +14,9 @@
 
 #pragma once
 
+std::string ITEM_DELIM = "## |ITMDELIM| ##";
+std::string LINE_DELIM = "## ,LINEDELIM, ##";
+
 // folder object
 class EncryptedFd{
     public:
@@ -79,12 +82,12 @@ std::vector<EncryptedFl> gAllFiles(std::string folder, std::string key){
     flMapRd.close();
     rLines = ssrLines.str();
 
-    for (std::string line: splStr(rLines, ",,,")){
+    for (std::string line: splStr(rLines, LINE_DELIM)){
 
         if (!line.size()) continue;
 
         // parse line
-        std::vector<std::string> pFileDat = splStr(line, "|||");
+        std::vector<std::string> pFileDat = splStr(line, ITEM_DELIM);
 
         std::string iv = pFileDat[1];
         int padsize = std::stoi(pFileDat[2]);
@@ -114,12 +117,12 @@ std::vector<EncryptedFd> gAllFolders(std::string folder, std::string key){
     fdMapRd.close();
     rLines = ssrLines.str();
 
-    for (std::string line: splStr(rLines, ",,,")){
+    for (std::string line: splStr(rLines, LINE_DELIM)){
 
         if (!line.size()) continue;
 
         // parse line
-        std::vector<std::string> pFolderDat = splStr(line, "|||");
+        std::vector<std::string> pFolderDat = splStr(line, ITEM_DELIM);
 
         std::string iv = pFolderDat[1];
         int padsize = std::stoi(pFolderDat[2]);
@@ -139,6 +142,7 @@ bool gStoredPass(std::string& sPass, std::string& sHash){
 
     std::ifstream pFile("password/password.pw");
     std::string pContents;
+    std::ostringstream pStrCont;
 
     // check if file exists
     if (!pFile.good()){
@@ -150,12 +154,13 @@ bool gStoredPass(std::string& sPass, std::string& sHash){
 
         return false;
     }
-    pFile >> pContents;
+    pStrCont << pFile.rdbuf();
+    pContents = pStrCont.str();
     pFile.close();
 
     if (!pContents.size()) return false;
 
-    std::vector<std::string> vpContents = splStr(pContents, "|||");
+    std::vector<std::string> vpContents = splStr(pContents, ITEM_DELIM);
     sPass = vpContents[0];
     sHash = vpContents[1];
 
@@ -177,7 +182,7 @@ void gStoredKey(std::string& sKey, std::string pass){
         
         // write new key
         std::ofstream tFile("password/key.key", std::ios_base::binary);
-        tFile << eKey.encrypted << "|||" << eKey.iv << "|||" << eKey.rPadsize << "|||";
+        tFile << eKey.encrypted << ITEM_DELIM << eKey.iv << ITEM_DELIM << eKey.rPadsize << ITEM_DELIM;
         tFile.close();
         kFile.close();
 
@@ -192,7 +197,7 @@ void gStoredKey(std::string& sKey, std::string pass){
     kFile.close();
 
     // parse key
-    std::vector<std::string> kDat = splStr(kContents, "|||");
+    std::vector<std::string> kDat = splStr(kContents, ITEM_DELIM);
 
     // decrypt and store key
     std::string iv = kDat[1];
@@ -206,7 +211,7 @@ void stoNewPass(std::string pass){
     std::string salt;
     std::ofstream pFile("password/password.pw");
     for (int i = 0; i != 32; i++){salt += "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"[randInt(0, 61)];}
-    pFile << sha256(pass + salt, 100000) << "|||" << salt << "|||";
+    pFile << sha256(pass + salt, 100000) << ITEM_DELIM << salt << ITEM_DELIM;
     pFile.close();
 }
 
@@ -219,7 +224,7 @@ void reKey(std::string pass, std::string oPass){
     enKey = encrypt(curKey, pass);
 
     std::ofstream kWrite("password/key.key", std::ios_base::binary);
-    kWrite << enKey.encrypted << "|||" << enKey.iv << "|||" << enKey.rPadsize << "|||";
+    kWrite << enKey.encrypted << ITEM_DELIM << enKey.iv << ITEM_DELIM << enKey.rPadsize << ITEM_DELIM;
     kWrite.close();
 }
 
@@ -288,7 +293,7 @@ void delFl(std::string dFilename, std::string folder, std::string key){
             std::remove(("data" + folder + "/" + eFile.eName + ".encrypted").c_str());
             continue;
         }
-        flMapStream << eFile.eName << "|||" << eFile.iv << "|||" << eFile.padsize << "|||" << eFile.eFilename << "|||" << eFile.fnPadsize << "|||,,,";
+        flMapStream << eFile.eName << ITEM_DELIM << eFile.iv << ITEM_DELIM << eFile.padsize << ITEM_DELIM << eFile.eFilename << ITEM_DELIM << eFile.fnPadsize << ITEM_DELIM + LINE_DELIM;
     }
     std::ofstream flMapWrite("data" + folder + "/flmap.fmap", std::ios_base::binary);
     flMapWrite << flMapStream.str();
@@ -304,7 +309,7 @@ void delFd(std::string dFdname, std::string folder, std::string key){
             RemoveDirectory(("data" + folder + "/" + eFd.eName).c_str());
             continue;
         }
-        fdMapStream << eFd.eName << "|||" << eFd.iv << "|||" << eFd.padsize << "|||" << eFd.eFdname << "|||,,,";
+        fdMapStream << eFd.eName << ITEM_DELIM << eFd.iv << ITEM_DELIM << eFd.padsize << ITEM_DELIM << eFd.eFdname << ITEM_DELIM + LINE_DELIM;
     }
     std::ofstream fdMapWrite("data" + folder + "/fdmap.fmap", std::ios_base::binary);
     fdMapWrite << fdMapStream.str();
@@ -374,7 +379,7 @@ void stoFile(std::string sFilePath, std::string folder, std::string key){
             EncryptRes feRes = encrypt(fd, key);
 
             // add folder name
-            if (create) fdMapWrite << nFdname << "|||" << feRes.iv << "|||" << feRes.rPadsize << "|||" << feRes.encrypted << "|||,,,";
+            if (create) fdMapWrite << nFdname << ITEM_DELIM << feRes.iv << ITEM_DELIM << feRes.rPadsize << ITEM_DELIM << feRes.encrypted << ITEM_DELIM + LINE_DELIM;
             fdMapWrite.close();
         }
     }
@@ -421,7 +426,7 @@ void stoFile(std::string sFilePath, std::string folder, std::string key){
     // write to file map
     std::ofstream flMapWrite(curDir + "/flmap.fmap", std::ios_base::app | std::ios_base::binary);
     EncryptRes eFilename = encrypt(cFilePath, key, feRes.iv);
-    flMapWrite << nFilename << "|||" << feRes.iv << "|||" << feRes.rPadsize << "|||" << eFilename.encrypted << "|||" << eFilename.rPadsize << "|||,,,";
+    flMapWrite << nFilename << ITEM_DELIM << feRes.iv << ITEM_DELIM << feRes.rPadsize << ITEM_DELIM << eFilename.encrypted << ITEM_DELIM << eFilename.rPadsize << ITEM_DELIM + LINE_DELIM;
     flMapWrite.close();
 
 }

@@ -291,13 +291,15 @@ int main(int argc, char* argv[]){
                     // change password
                     if (SDL_HasIntersection(&pwRect, &mr)){
                         ShowWindow(conHandle, SW_SHOW);
-                        std::string newPass;
-                        std::cout << "Welcome to the password changing menu!\nEnter your new password: ";
-                        std::getline(std::cin, newPass);
-                        reKey(newPass, inPass);
-                        stoNewPass(newPass);
-                        gStoredKey(key, newPass);
                         system("cls");
+                        std::string newPass;
+                        std::cout << "Welcome to the password changing menu!\nEnter your new password (enter !EXIT to exit without changing your password): ";
+                        std::getline(std::cin, newPass);
+                        if (newPass != "!EXIT"){
+                            reKey(newPass, inPass);
+                            stoNewPass(newPass);
+                            gStoredKey(key, newPass);
+                        }
                         ShowWindow(conHandle, SW_HIDE);
                     }
                     // scrollbar held
@@ -428,7 +430,13 @@ int main(int argc, char* argv[]){
                             selFds.clear();
                             selFls.clear();
                         }
-                        selFds.push_back(fd.name);
+
+                        // sorry
+                        if (std::find(selFds.begin(), selFds.end(), fd.name) != selFds.end()){
+                            selFds.erase(std::find(selFds.begin(), selFds.end(), fd.name));
+                        } else {
+                            selFds.push_back(fd.name);
+                        }
                     }
                 }
 
@@ -460,7 +468,13 @@ int main(int argc, char* argv[]){
                             selFds.clear();
                             selFls.clear();
                         }
-                        selFls.push_back(fl.name);
+
+                        // not again
+                        if (std::find(selFls.begin(), selFls.end(), fl.name) != selFls.end()){
+                            selFls.erase(std::find(selFls.begin(), selFls.end(), fl.name));
+                        } else {
+                            selFls.push_back(fl.name);
+                        }
                     }
                 }
 
