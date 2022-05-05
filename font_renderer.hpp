@@ -112,7 +112,6 @@ void loadFont(
         character_map[font_file][size][char_str] = Character(renderer, thing);
         
     }
-    
 }
 
 // Render text.
@@ -138,10 +137,8 @@ void renderText(
 
     // render characters
     for (char& character: text){
-
         std::string char_str(1, character);
         x += character_map[font][size][char_str].render(renderer, x, y, color);
-
     }
 
 }

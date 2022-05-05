@@ -17,8 +17,8 @@
 #include <SDL2/include/SDL2/SDL.h>
 #include <SDL2/include/SDL2/SDL_image.h>
 
-#define WINDOW_WIDTH 700
-#define WINDOW_HEIGHT 700
+#define WINDOW_WIDTH 600
+#define WINDOW_HEIGHT 600
 #define MINVAL(a, b) (a < b ? a : b)
 #define MAXVAL(a, b) (a > b ? a : b)
 
@@ -317,19 +317,21 @@ int main(int argc, char* argv[]){
                     if (SDL_HasIntersection(&flRect, &mr)){
                         OPENFILENAME ofObj;
                         ZeroMemory(&ofObj, sizeof(ofObj));
-                        std::string thing;
-                        ofObj.lpstrFile = const_cast<char*>(thing.c_str());
+                        std::string tmp;
+                        ofObj.lpstrFile = const_cast<char*>(tmp.c_str());
                         ofObj.lpstrFile[0] = '\0';
                         ofObj.lpstrFilter = NULL;
                         ofObj.lStructSize = sizeof(OPENFILENAMEA);
                         ofObj.nFileOffset = 0;
                         ofObj.Flags = OFN_PATHMUSTEXIST;
                         ofObj.lpstrTitle = "Add file to vault";
-                        ofObj.nMaxFile = 2048;
+                        ofObj.nMaxFile = 10000;
                         ofObj.hwndOwner = NULL;
+                        std::string bfCwd = std::filesystem::current_path().string();
                         if (GetOpenFileName(&ofObj)){
-                            toStoFls.push_back(std::make_pair(ofObj.lpstrFile, curDisDir));
+                            toStoFls.push_back(std::make_pair(std::string(ofObj.lpstrFile), curDisDir));
                         }
+                        std::filesystem::current_path(bfCwd); // why does GetOpenFileName change the cwd? bruh
                     }
                     // browse for folder to store
                     if (SDL_HasIntersection(&fdRect, &mr)){
@@ -553,7 +555,6 @@ int main(int argc, char* argv[]){
             // render storing message
             bool smShow = toStoFls.size() || toStoFds.size();
             if (smShow){
-
                 // surrounding rect
                 SDL_Rect smRect = {
                     (WINDOW_WIDTH - 300) / 2, (WINDOW_HEIGHT - 130) / 2,

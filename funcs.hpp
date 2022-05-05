@@ -390,10 +390,10 @@ void stoFile(std::string sFilePath, std::string folder, std::string key){
     std::string fContent;
     std::ostringstream fContentBuf;
     std::ifstream sFileRead(sFilePath, std::ios_base::binary);
-    if (!sFileRead.good()) return;
     fContentBuf << sFileRead.rdbuf();
     fContent = fContentBuf.str();
     sFileRead.close();
+    if (!sFileRead.good()) return;
 
     // encrypt file contents
     EncryptRes feRes = encrypt(fContent, key);
@@ -428,6 +428,9 @@ void stoFile(std::string sFilePath, std::string folder, std::string key){
     EncryptRes eFilename = encrypt(cFilePath, key, feRes.iv);
     flMapWrite << nFilename << ITEM_DELIM << feRes.iv << ITEM_DELIM << feRes.rPadsize << ITEM_DELIM << eFilename.encrypted << ITEM_DELIM << eFilename.rPadsize << ITEM_DELIM + LINE_DELIM;
     flMapWrite.close();
+
+    std::ifstream mr(curDir + "/flmap.fmap", std::ios_base::app | std::ios_base::binary);
+    mr.close();
 
 }
 
