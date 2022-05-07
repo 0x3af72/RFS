@@ -1,12 +1,12 @@
 # RFS
 
-A simple and secure file vault with useful functionalities.
+RFS is an easy to use file vault to securely store your files. It can be used on your computer, or from an external drive. Data on external drives is cacessible to anyone, so private files can be stored on them with RFS.
 
 ## Security
 
-**Hashing**: Passwords are hashed through __100k__ rounds of sha256, and salted with a cryptographically-secure salt of 32 characters.
+**Hashing**: Passwords are hashed with SHA256 and salted with a 32-character salt.
 
-**Encryption**: Data is encrypted through AES-256.
+**Encryption**: Files are encrypted with AES-256, a secure encryption algorithm.
 
 ## Functionalities
 
