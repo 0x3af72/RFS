@@ -1,6 +1,8 @@
 # RFS
 
-RFS is an easy to use file vault to securely store your files. It can be used on your computer, or from an external drive. Data on external drives is cacessible to anyone, so private files can be stored on them with RFS.
+RFS is an easy to use file vault to securely store your files. It can be used on your computer, or from an external drive.
+
+Data on external drives is accessible to anyone, so private files can be stored on them with RFS.
 
 ## Security
 
