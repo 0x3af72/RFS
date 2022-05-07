@@ -67,7 +67,7 @@ int main(int argc, char* argv[]){
     ShowWindow(conHandle, SW_HIDE);
 
     // setup backend
-    setup();
+    if (!setup()) return 0;
 
     // state
     bool running = true;
@@ -317,8 +317,8 @@ int main(int argc, char* argv[]){
                     if (SDL_HasIntersection(&flRect, &mr)){
                         OPENFILENAME ofObj;
                         ZeroMemory(&ofObj, sizeof(ofObj));
-                        std::string tmp;
-                        ofObj.lpstrFile = const_cast<char*>(tmp.c_str());
+                        char tmp[255];
+                        ofObj.lpstrFile = tmp;
                         ofObj.lpstrFile[0] = '\0';
                         ofObj.lpstrFilter = NULL;
                         ofObj.lStructSize = sizeof(OPENFILENAMEA);
