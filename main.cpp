@@ -21,6 +21,7 @@
 #define WINDOW_HEIGHT 600
 #define MINVAL(a, b) (a < b ? a : b)
 #define MAXVAL(a, b) (a > b ? a : b)
+#define SET_THIS_VAL 1245937938
 
 void relFiles(std::vector<DisFile>& files, SDL_Renderer* ren, std::string curDir, std::string key){
     files.clear();
@@ -36,13 +37,14 @@ void relFds(std::vector<DisFolder>& folders, SDL_Renderer* ren, std::string curD
     }
 }
 
-SDL_Rect gRenRect(SDL_Rect org, SDL_Rect mr){
+SDL_Rect gRenRect(SDL_Rect org, SDL_Rect mr, SDL_Cursor* cCur){
     SDL_Rect renRect = org;
     if (SDL_HasIntersection(&org, &mr)){
         renRect.x -= 1;
         renRect.y -= 1;
         renRect.w += 2;
         renRect.h += 2;
+        SDL_SetCursor(cCur);
     }
     return renRect;
 }
@@ -61,6 +63,8 @@ int main(int argc, char* argv[]){
     SDL_Surface* icSurf = IMG_Load("images/icon.png");
     SDL_SetWindowIcon(win, icSurf);
     SDL_FreeSurface(icSurf);
+    SDL_Cursor* cCur = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+    SDL_Cursor* nCur = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
 
     // console window
     HWND conHandle = GetConsoleWindow();
@@ -104,6 +108,7 @@ int main(int argc, char* argv[]){
     SDL_Rect sbRect;
     bool dbClick = false, sbHeld = false, selClick = false, ctrlHeld = false;
     std::string dropPath;
+    std::string movToFd = "";
 
     // things to store
     std::vector<std::pair<std::string, std::string>> toStoFls;
@@ -260,6 +265,9 @@ int main(int argc, char* argv[]){
             toStoFds.clear();
             toStoFls.clear();
 
+            // set cursor
+            SDL_SetCursor(nCur);
+
             // key holds
             ctrlHeld = false;
             const Uint8* kbState = SDL_GetKeyboardState(NULL);
@@ -320,6 +328,11 @@ int main(int argc, char* argv[]){
                         movFd("$OUT", curDir, curDisDir, key);
                         relFds(folders, ren, curDir, key);
                         relFiles(files, ren, curDir, key);
+                        selFls.clear();
+                        selFds.clear();
+                        scrollY = 0;
+                        sbHeld = false;
+                        scrollY = 0;
                     }
                     // browse for file to store
                     if (SDL_HasIntersection(&flRect, &mr)){
@@ -429,9 +442,7 @@ int main(int argc, char* argv[]){
 
                     // open folder
                     if (dbClick){
-                        movFd(fd.name, curDir, curDisDir, key);
-                        relFiles(files, ren, curDir, key);
-                        relFds(folders, ren, curDir, key);
+                        movToFd = fd.name;
                     }
 
                     // selections
@@ -547,17 +558,17 @@ int main(int argc, char* argv[]){
             SDL_SetRenderDrawColor(ren, 0, 255, 0, 255);
             SDL_RenderDrawLine(ren, 0, WINDOW_HEIGHT - endOffset, WINDOW_WIDTH, WINDOW_HEIGHT - endOffset);
 
-            SDL_Rect prevRenRect = gRenRect(prevRect, mr);
+            SDL_Rect prevRenRect = gRenRect(prevRect, mr, cCur);
             SDL_RenderCopy(ren, prevTex, NULL, &prevRenRect);
-            SDL_Rect flRenRect = gRenRect(flRect, mr);
+            SDL_Rect flRenRect = gRenRect(flRect, mr, cCur);
             SDL_RenderCopy(ren, flTex, NULL, &flRenRect);
-            SDL_Rect fdRenRect = gRenRect(fdRect, mr);
+            SDL_Rect fdRenRect = gRenRect(fdRect, mr, cCur);
             SDL_RenderCopy(ren, fdTex, NULL, &fdRenRect);
-            SDL_Rect pwRenRect = gRenRect(pwRect, mr);
+            SDL_Rect pwRenRect = gRenRect(pwRect, mr, cCur);
             SDL_RenderCopy(ren, pwTex, NULL, &pwRenRect);
-            SDL_Rect binRenRect = gRenRect(binRect, mr);
+            SDL_Rect binRenRect = gRenRect(binRect, mr, cCur);
             if (selFls.size() || selFds.size()) SDL_RenderCopy(ren, binTex, NULL, &binRenRect);
-            SDL_Rect expRenRect = gRenRect(expRect, mr);
+            SDL_Rect expRenRect = gRenRect(expRect, mr, cCur);
             if (selFls.size() || selFds.size()) SDL_RenderCopy(ren, expTex, NULL, &expRenRect);
 
             // render storing message
@@ -584,6 +595,18 @@ int main(int argc, char* argv[]){
             }
 
             SDL_RenderPresent(ren);
+
+            // move folder
+            if (movToFd.size()){
+                movFd(movToFd, curDir, curDisDir, key);
+                relFiles(files, ren, curDir, key);
+                relFds(folders, ren, curDir, key);
+                selFls.clear();
+                selFds.clear();
+                scrollY = 0;
+                sbHeld = false;
+                movToFd = "";
+            }
 
             // store queued files and folders
             for (auto [sFilePath, folder]: toStoFls){
