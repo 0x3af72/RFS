@@ -293,12 +293,20 @@ int main(int argc, char* argv[]){
                         ShowWindow(conHandle, SW_SHOW);
                         system("cls");
                         std::string newPass;
-                        std::cout << "Welcome to the password changing menu!\nEnter your new password (enter !EXIT to exit without changing your password): ";
-                        std::getline(std::cin, newPass);
-                        if (newPass != "!EXIT"){
-                            reKey(newPass, inPass);
-                            stoNewPass(newPass);
-                            gStoredKey(key, newPass);
+                        std::cout << "Welcome to the password changing menu!\n";
+                        while (true){
+                            std::cout << "Enter your new password (enter !EXIT to exit without changing your password): ";
+                            std::getline(std::cin, newPass);
+                            if (newPass != "!EXIT"){
+                                if (newPass.size() < 32){
+                                    reKey(newPass, inPass);
+                                    stoNewPass(newPass);
+                                    gStoredKey(key, newPass);
+                                    break;
+                                } else {
+                                    std::cout << "Password must be under 32 characters long! Try again.\n";
+                                }
+                            } else {break;}
                         }
                         ShowWindow(conHandle, SW_HIDE);
                     }
@@ -317,7 +325,7 @@ int main(int argc, char* argv[]){
                     if (SDL_HasIntersection(&flRect, &mr)){
                         OPENFILENAME ofObj;
                         ZeroMemory(&ofObj, sizeof(ofObj));
-                        char tmp[255];
+                        char tmp[MAX_PATH];
                         ofObj.lpstrFile = tmp;
                         ofObj.lpstrFile[0] = '\0';
                         ofObj.lpstrFilter = NULL;
@@ -325,7 +333,7 @@ int main(int argc, char* argv[]){
                         ofObj.nFileOffset = 0;
                         ofObj.Flags = OFN_PATHMUSTEXIST;
                         ofObj.lpstrTitle = "Add file to vault";
-                        ofObj.nMaxFile = 10000;
+                        ofObj.nMaxFile = MAX_PATH;
                         ofObj.hwndOwner = NULL;
                         std::string bfCwd = std::filesystem::current_path().string();
                         if (GetOpenFileName(&ofObj)){
@@ -336,7 +344,7 @@ int main(int argc, char* argv[]){
                     // browse for folder to store
                     if (SDL_HasIntersection(&fdRect, &mr)){
                         BROWSEINFOA biObj;
-                        char fdDir[10000];
+                        char fdDir[MAX_PATH];
                         biObj.hwndOwner = NULL;
                         biObj.lpszTitle = "Add folder to vault";
                         biObj.pszDisplayName = fdDir;
