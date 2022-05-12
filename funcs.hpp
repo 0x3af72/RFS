@@ -500,9 +500,10 @@ void exportFd(std::string rName, std::string folder, std::string outFd, std::str
 }
 
 // setup things
-void setup(){
+bool setup(){
     CreateDirectory("temp", NULL);
     CreateDirectory("data", NULL);
     CreateDirectory("password", NULL);
     std::atexit([]{std::filesystem::remove_all("temp");});
+    return true;
 }

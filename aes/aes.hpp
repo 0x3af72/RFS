@@ -1,8 +1,7 @@
 #include <iostream>
-#include <random>
 #include <vector>
 
-#include "_aes.hpp"
+#include "rijndael.h"
 #include "../rand/cs_random.hpp"
 
 #pragma once
@@ -16,53 +15,80 @@ class EncryptRes{
         EncryptRes() = default;
 };
 
-std::vector<unsigned char> strToVec(std::string str){
-    std::vector<unsigned char> res(str.c_str(), str.c_str() + str.size());
-    return res;
+// pad to number
+int padTo(std::string& str, int to){
+    if (str.size() < to){
+        int diff = to - str.size();
+        std::string pad(to - str.size(), 'P');
+        str += pad;
+        return diff;
+    }
+    return 0;
 }
 
-int roundUp(int num, int multiple){
-    return ((num + multiple - 1) / multiple) * multiple;
+// round to nearest mul
+int roundTo(int n, int mul){
+    return ((n + mul - 1) / mul) * mul;
 }
 
+// encrypt string
 EncryptRes encrypt(std::string raw, std::string key, std::string iv = ""){
 
-    std::vector<unsigned char> vRaw, vKey, vIv;
-    AES aes(AESKeyLength::AES_256);
+    // set key
+    padTo(key, 32);
+    unsigned char aKey[32];
+    for (int i = 0; i != key.size(); i++) aKey[i] = key[i];
+    rijn_context ctx;
+    rijn_set_key(&ctx, aKey, 256, 256);
 
-    // get new raw
-    int rPadsize = roundUp(raw.size(), 16) - raw.size();
-    if (rPadsize){std::string pad(rPadsize, 'P'); raw += pad;}
-    vRaw = strToVec(raw);
+    // pad raw
+    int pSize = padTo(raw, roundTo(raw.size(), 32));
 
-    // pad key
-    if (key.size() < 32){std::string pad(32 - key.size(), 'P'); key += pad;}
-    vKey = strToVec(key);
-
-    // generate iv
-    if (!iv.size()){
-        for (int i = 0; i != 16; i++){
-            vIv.push_back(randInt(0, 255));
+    // iv
+    unsigned char aIv[32];
+    if (iv.size()){
+        for (int i = 0; i != iv.size(); i++) aIv[i] = iv[i];
+    } else {
+        for (int i = 0; i != 32; i++){
+            aIv[i] = randInt(0, 255);
+            iv += aIv[i];
         }
-    } else {vIv = strToVec(iv);}
-    std::string fIv(vIv.begin(), vIv.end());
-
-    std::vector<unsigned char> veStr = aes.EncryptCBC(vRaw, vKey, vIv);
-    std::string eStr(veStr.begin(), veStr.end());
-    return EncryptRes(eStr, fIv, rPadsize);
+    }
+    
+    // chunk up raw
+    std::string enc;
+    for (int m = 0; m != raw.size(); m += 32){
+        unsigned char aCh[32], res[32];
+        std::string sCh = raw.substr(m, 32);
+        for (int i = 0; i != sCh.size(); i++) aCh[i] = sCh[i];
+        rijn_cbc_encrypt(&ctx, aIv, aCh, res, 32);
+        for (int i = 0; i != sizeof(res); i++) enc += res[i];
+    }
+    return EncryptRes(enc, iv, pSize);
 }
 
-std::string decrypt(std::string eStr, std::string key, std::string iv, int rPadsize){
+// decrypt string
+std::string decrypt(std::string eStr, std::string key, std::string iv, int pSize){
 
-    std::vector<unsigned char> veStr, vKey, vIv, vdStr;
-    AES aes(AESKeyLength::AES_256);
+    // set key
+    padTo(key, 32);
+    unsigned char aKey[32];
+    for (int i = 0; i != key.size(); i++) aKey[i] = key[i];
+    rijn_context ctx;
+    rijn_set_key(&ctx, aKey, 256, 256);
 
-    veStr = strToVec(eStr);
-    if (key.size() < 32){std::string pad(32 - key.size(), 'P'); key += pad;} // pad key
-    vKey = strToVec(key);
-    vIv = strToVec(iv);
+    // iv
+    unsigned char aIv[32];
+    for (int i = 0; i != iv.size(); i++) aIv[i] = iv[i];
 
-    vdStr = aes.DecryptCBC(veStr, vKey, vIv);
-    std::string dStr(vdStr.begin(), vdStr.end());
-    return dStr.substr(0, dStr.size() - rPadsize);
+    // chunk up encrypted
+    std::string dec;
+    for (int m = 0; m != eStr.size(); m += 32){
+        unsigned char aCh[32], res[32];
+        std::string sCh = eStr.substr(m, 32);
+        for (int i = 0; i != sCh.size(); i++) aCh[i] = sCh[i];
+        rijn_cbc_decrypt(&ctx, aIv, aCh, res, 32);
+        for (int i = 0; i != sizeof(res); i++) dec += res[i];
+    }
+    return dec.substr(0, dec.size() - pSize);
 }
