@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <shlobj.h>
 #include <string>
+#include <mutex>
 
 #include "font_renderer.hpp"
 #include "funcs.hpp"
@@ -35,6 +36,25 @@ void relFds(std::vector<DisFolder>& folders, SDL_Renderer* ren, std::string curD
     for (EncryptedFd eFd: gAllFolders("data" + curDir, key)){
         folders.push_back(DisFolder(ren, eFd.name));
     }
+}
+
+// threaded store functions
+std::mutex mtx;
+void tStoFl(std::vector<DisFile>& files, SDL_Renderer* ren, std::string curDir, std::string sFilePath, std::string folder, std::string key, bool& storing){
+    mtx.lock();
+    storing = true;
+    stoFile(sFilePath, folder, key);
+    relFiles(files, ren, curDir, key); // i think this is safe
+    storing = false;
+    mtx.unlock();
+}
+void tStoFd(std::vector<DisFolder>& folders, SDL_Renderer* ren, std::string curDir, std::string sFdPath, std::string key, bool& storing){
+    mtx.lock();
+    storing = true;
+    stoFd(sFdPath, curDir, key);
+    relFds(folders, ren, curDir, key);
+    storing = false;
+    mtx.unlock();
 }
 
 SDL_Rect gRenRect(SDL_Rect org, SDL_Rect mr, SDL_Cursor* cCur){
@@ -106,7 +126,7 @@ int main(int argc, char* argv[]){
     std::vector<DisFile> files;
     std::vector<DisFolder> folders;
     SDL_Rect sbRect;
-    bool dbClick = false, sbHeld = false, selClick = false, ctrlHeld = false;
+    bool dbClick = false, sbHeld = false, selClick = false, ctrlHeld = false, storing = false;
     std::string dropPath;
     std::string movToFd = "";
 
@@ -572,25 +592,12 @@ int main(int argc, char* argv[]){
             if (selFls.size() || selFds.size()) SDL_RenderCopy(ren, expTex, NULL, &expRenRect);
 
             // render storing message
-            bool smShow = toStoFls.size() || toStoFds.size();
-            if (smShow){
-                // surrounding rect
-                SDL_Rect smRect = {
-                    (WINDOW_WIDTH - 300) / 2, (WINDOW_HEIGHT - 130) / 2,
-                    300, 130
-                };
-                SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
-                SDL_RenderFillRect(ren, &smRect);
-                SDL_SetRenderDrawColor(ren, 0, 255, 0, 255);
-                SDL_RenderDrawRect(ren, &smRect);
-
-                // text
+            if (storing){
                 renderText(
                     ren, Color(0, 255, 0),
                     "Storing...",
-                    smRect.x + (smRect.w - textWidth(ren, "Storing...", 30)) / 2,
-                    smRect.y + (smRect.h - textHeight(ren, "Storing...", 30)) / 2,
-                    30
+                    WINDOW_WIDTH - 10 - textWidth(ren, "Storing...", 20), WINDOW_HEIGHT - endOffset + 10,
+                    20
                 );
             }
 
@@ -610,10 +617,12 @@ int main(int argc, char* argv[]){
 
             // store queued files and folders
             for (auto [sFilePath, folder]: toStoFls){
-                stoFile(sFilePath, folder, key);
+                std::thread nThread(tStoFl, std::ref(files), std::ref(ren), curDir, sFilePath, folder, key, std::ref(storing));
+                nThread.detach();
             }
             for (auto [sFdPath, folder]: toStoFds){
-                stoFd(sFdPath, folder, key);
+                std::thread nThread(tStoFd, std::ref(folders), std::ref(ren), curDir, sFdPath, key, std::ref(storing));
+                nThread.detach();
             }
             if (toStoFls.size()) relFiles(files, ren, curDir, key);
             if (toStoFds.size()) relFds(folders, ren, curDir, key);
